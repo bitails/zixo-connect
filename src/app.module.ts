@@ -11,6 +11,5 @@ import { AppService } from './app.service';
   ],
   providers: [AppConfigService, AppService],
   exports: [AppConfigService],
-
 })
-export class AppModule { }
+export class AppModule {}

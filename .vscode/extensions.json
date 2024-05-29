@@ -1,5 +1,6 @@
 {
-    "recommendations": [
-        "kuscamara.remove-unused-imports"
-    ]
+  "recommendations": [
+    "kuscamara.remove-unused-imports",
+    "esbenp.prettier-vscode"
+  ]
 }

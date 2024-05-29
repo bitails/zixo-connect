@@ -1,4 +1,12 @@
-export interface ReqUserDataModel {
+import { Branch } from "src/bloc/model/proof.model";
+
+export class ReqUserDataModel {
     currentTx: string;
-    inputs: string[];
+    inputs: Input[];
+}
+
+
+class Input {
+    rawTx: string;
+    branch: Branch[]
 }

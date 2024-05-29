@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import * as bsv from 'bsv';
 import request from 'request';
 import { AppConfigService } from 'src/app.config.service';
+import { TransactionModel } from 'src/transaction/model/transaction.model';
+import { TransactionService } from 'src/transaction/transaction.service';
 import { BlockModel } from './model/block.model';
 import { BlockHeader, Branch, Proof } from './model/proof.model';
 
 @Injectable()
 export class BlockService {
-    constructor(private readonly appConfigService: AppConfigService) { }
+    constructor(private readonly appConfigService: AppConfigService, private readonly transactionService: TransactionService) { }
 
     getBlockByHeight(blockHeight: number): Promise<BlockModel> {
         const url = `https://api.bitails.io/block/height/${blockHeight}`;
@@ -98,5 +100,12 @@ export class BlockService {
         });
 
         return currentHash.reverse().toString('hex'); // Reverse back to big-endian for final result
+    }
+
+    async validateSourceOfTransaction(rawTx: string, merklePath: Branch[]): Promise<boolean> {
+        const transaction: TransactionModel = this.transactionService.parseRawTransaction(rawTx);
+        const validMrkleRoot = await this.getMerkleRoot(transaction.blockheight);
+        const computeMrkleRoot = this.computeMerkleRoot(transaction.txid, merklePath);
+        return computeMrkleRoot == validMrkleRoot;
     }
 }

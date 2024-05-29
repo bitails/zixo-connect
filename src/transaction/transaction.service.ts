@@ -6,7 +6,7 @@ import { AppConfigService } from "src/app.config.service";
 import { ReqUserDataModel } from "src/public_model/user_req.model";
 import { ScriptSig, TransactionModel, Vin, Vout } from "./model/transaction.model";
 @Injectable()
-export class BlockService {
+export class TransactionService {
     constructor(private readonly appConfigService: AppConfigService) { }
 
     private extractAddresses(script: Script): string[] {
@@ -113,9 +113,19 @@ export class BlockService {
         const mergeOutputs: Vout[] = inputsRaw.flatMap(input => this.parseRawTransaction(input).vout);
 
         const isValid: boolean = current.vin.every((input: Vin) => {
-            const index = mergeOutputs.findIndex(output => output.spent?.txid === input.txid && output.n === input.vout);
+            //const index = mergeOutputs.findIndex(output => output.spent?.txid === input.txid && output.n === input.vout);
+            const index = mergeOutputs.findIndex(output => {
+                if (this.appConfigService.ACCEPT_UNCONFIRMED_INPUT_TRANSACTION) {
+                    // Treat unconfirmed transactions as valid
+                    return (output.spent?.txid === input.txid && output.n === input.vout);
+                } else {
+                    return false;
+                }
+            });
             return index !== -1;
         });
+
+
 
         return isValid;
     }
@@ -152,11 +162,7 @@ export class BlockService {
                 Script.Interpreter.SCRIPT_VERIFY_STRICTENC |
                 Script.Interpreter.SCRIPT_ENABLE_SIGHASH_FORKID;
 
-            // console.log("\n\n\n");
-            // console.log("scriptSigHex",scriptSigHex);
-            // console.log("scriptPubKeyHex",scriptPubKeyHex);
-
-            const prevTxRaw = reqUserDataModel.inputs.find(txRaw => this.generateTxidFromRawTransaction(txRaw) === tx.vin[inputIndex].txid);
+            const prevTxRaw = reqUserDataModel.inputs.find(txRaw => this.generateTxidFromRawTransaction(txRaw.rawTx) === tx.vin[inputIndex].txid);
 
             if (!prevTxRaw) {
                 throw new Error(`Input ${inputIndex} previous transaction not found.`);
@@ -171,8 +177,6 @@ export class BlockService {
 
             const result = interpreter.verify(scriptSig, scriptPubKey, new Transaction(reqUserDataModel.currentTx), inputIndex, flags, satoshisBN);
 
-            // console.log("resuuuuu",interpreter.errstr);
-            // console.log("resuuuuu",result);
             return result;
         } catch (error) {
             throw new Error(`Error verifying script: ${error.message}`);
@@ -186,14 +190,14 @@ export class BlockService {
         for (let index = 0; index < currentTx.vin.length; index++) {
             const input: Vin = currentTx.vin[index];
 
-            const equalInputTxRaw = reqUserDataModel.inputs.find(tx => this.generateTxidFromRawTransaction(tx) === input.txid);
+            const equalInputTxRaw = reqUserDataModel.inputs.find(tx => this.generateTxidFromRawTransaction(tx.rawTx) === input.txid);
             if (!equalInputTxRaw) {
                 // console.log(`Input ${index} not valid.`);
                 result = false;
                 break;
             }
 
-            const equalInputTx = this.parseRawTransaction(equalInputTxRaw);
+            const equalInputTx = this.parseRawTransaction(equalInputTxRaw.rawTx);
             const scriptPubKey = equalInputTx.vout[input.vout]?.scriptPubKey?.hex;
 
             if (!scriptPubKey) {

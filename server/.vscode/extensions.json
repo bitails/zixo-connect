@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+      "kuscamara.remove-unused-imports",
+      "esbenp.prettier-vscode"
+    ]
+  }
+  

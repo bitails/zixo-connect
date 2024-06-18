@@ -1,11 +1,5 @@
 
-# Zixo Connect Project
-
-Sure, here’s a draft of the README description for your solution:
-
----
-
-# Merchant-Client Transaction Solution
+# Zixo Connect
 
 This solution enables seamless transactions between merchants and clients using SPV (Simplified Payment Verification) technology on the BSV (Bitcoin SV) network. The system consists of three primary components:
 
@@ -32,11 +26,9 @@ This solution enables seamless transactions between merchants and clients using 
 6. **Server Broadcasting**: If the transaction satisfies the merchant’s requirements, it is sent to the server. The server then broadcasts the transaction to the BSV network for confirmation.
 
 ## General Description
-The merchant generates a QR code that the client scans to obtain the server address to connect via socket, as well as the public key and ivhex for message encryption, and the ID announced to the socket server during setup. You can also add other data in JSON format as needed.
+The merchant generates a QR code that the client scans to obtain the server address to connect via socket, as well as the public key and ivhex for message encryption, and the ID announced to the socket server during setup. You can also add other data in JSON format if needed.
 
-[![QR Code Scan](https://i.postimg.cc/zGcPNK6n/image1.webp)](https://postimg.cc/Wd076F23)
-
-The client scans the QR code and must encrypt its own public key, ivhex, and ID announced to the socket network in JSON format using the merchant's public key, and then send it to the network.
+The client scans the QR code and encrypts its own public key, ivhex, and ID announced to the socket network in JSON format using the merchant's public key, then sends it to the merchant through the socket.
 
 The server, upon receiving each message, stores the ID and socket related to the presentApplicationID message, and if the title is different, it sends the message to the client or merchant based on the message ID.
 

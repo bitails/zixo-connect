@@ -1,12 +1,35 @@
 
 # Zixo Connect Project
 
-We have created a project similar to Wallet Connect but with more access and configurability. You can easily configure it to meet your needs.
+Sure, here’s a draft of the README description for your solution:
 
-## Sections:
-1. Server
-2. Merchant
-3. Client
+---
+
+# Merchant-Client Transaction Solution
+
+This solution enables seamless transactions between merchants and clients using SPV (Simplified Payment Verification) technology on the BSV (Bitcoin SV) network. The system consists of three primary components:
+
+1. **Server**: This component can be hosted by the merchant or use the server we provide. The server is responsible for broadcasting transactions to the BSV network once they are verified by the merchant.
+
+2. **Merchant Service**: This is the service run by the merchant, allowing clients to connect and send data and transactions. It verifies transactions based on predefined criteria before sending them to the server for broadcasting.
+
+3. **Client**: The client can be implemented as code or a wallet application. It initiates transactions by connecting to the merchant service, sending necessary data, and receiving responses.
+
+## How It Works
+
+### Transaction Scenario
+
+1. **Merchant Setup**: The merchant sets up the merchant service on their website or application, displaying a QR code for clients to scan.
+
+2. **Client Interaction**: The client scans the QR code displayed by the merchant. This QR code contains the necessary information for connecting to the merchant service.
+
+3. **Transaction Creation**: Upon scanning the QR code, the client establishes a connection with the merchant service and creates a transaction. The transaction follows SPV principles, ensuring it is lightweight and efficient.
+
+4. **Transaction Submission**: The client sends the SPV-based transaction through the connection to the merchant.
+
+5. **Merchant Verification**: The merchant service verifies the transaction to ensure it meets specific requirements. This may include checks for validity, sufficiency of funds, and compliance with any additional criteria set by the merchant.
+
+6. **Server Broadcasting**: If the transaction satisfies the merchant’s requirements, it is sent to the server. The server then broadcasts the transaction to the BSV network for confirmation.
 
 ## General Description
 The merchant generates a QR code that the client scans to obtain the server address to connect via socket, as well as the public key and ivhex for message encryption, and the ID announced to the socket server during setup. You can also add other data in JSON format as needed.

@@ -83,9 +83,6 @@ Wait for the client to start without errors. Note that at this stage, the client
 ## Usage Instructions:
 If you have followed the instructions, all parts should be running by now. We will now operate to connect and send transaction information from the client and verify it on the merchant side as SPV.
 
-
-[![Workflow](https://i.postimg.cc/4Nwvcc6j/image.webp)](https://postimg.cc/tYZVQYmz)
-
 First, go to the merchant's swagger address and generate a QR code. When you scan it, you will get a base64 hashed text, for example:
 ```
 eJyNk9tuGzcURf9Gb4pJntuwgBDkLUHQjyCHHMOwExtW2iR/...

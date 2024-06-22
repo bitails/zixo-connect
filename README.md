@@ -3,11 +3,11 @@
 
 This solution enables seamless transactions between merchants and clients using SPV (Simplified Payment Verification) technology on the BSV (Bitcoin SV) network. The system consists of three primary components:
 
-1. **Server**: This component can be hosted by the merchant or use the server we provide. The server is responsible for broadcasting transactions to the BSV network once they are verified by the merchant.
+1. **Socket Server**: This component can be hosted by the merchant or through the server hosted by the Zixo team. The server is responsible for keeping track of socket IDs which are used to connect the merchant with the clients.
 
-2. **Merchant Service**: This is the service run by the merchant, allowing clients to connect and send data and transactions. It verifies transactions based on predefined criteria before sending them to the server for broadcasting.
+2. **Merchant Service**: This service connects the clients to the merchant and allows them to send the data and transactions to the merchant directly. It verifies transactions based on predefined criteria before sending them to the server service.
 
-3. **Client**: The client can be implemented as code or a wallet application. It initiates transactions by connecting to the merchant service, sending necessary data, and receiving responses.
+3. **Client**: The client can be implemented as code or as a wallet application. It initiates transactions by connecting to the merchant service, sending necessary data, and receiving responses.
 
 ## How It Works
 
@@ -17,27 +17,20 @@ This solution enables seamless transactions between merchants and clients using 
 
 2. **Client Interaction**: The client scans the QR code displayed by the merchant. This QR code contains the necessary information for connecting to the merchant service.
 
-3. **Transaction Creation**: Upon scanning the QR code, the client establishes a connection with the merchant service and creates a transaction. The transaction follows SPV principles, ensuring it is lightweight and efficient.
+3. **Transaction Creation**: Upon scanning the QR code, the client connects with the merchant service and creates a transaction. The transaction follows SPV principles, ensuring it is lightweight and efficient.
 
-4. **Transaction Submission**: The client sends the SPV-based transaction through the connection to the merchant.
+4. **Transaction Submission**: The client sends the SPV-based transaction to the merchant through the connection.
 
-5. **Merchant Verification**: The merchant service verifies the transaction to ensure it meets specific requirements. This may include checks for validity, sufficiency of funds, and compliance with any additional criteria set by the merchant.
+5. **Merchant Verification**: The merchant service verifies the transaction to ensure it meets the requirements. This may include checks for validity, sufficiency of funds, and compliance with any additional criteria the merchant needs.
 
-6. **Server Broadcasting**: If the transaction satisfies the merchant’s requirements, it is sent to the server. The server then broadcasts the transaction to the BSV network for confirmation.
+6. **Transaction Propagation**: The transaction is sent to the BSV network by the merchant for settlement if it meets the merchant's requirements.
+ 
+## Under the Hood
+The merchant generates a QR code that the client scans to obtain the merchant's public key and ivhex for encrypting the messages, and the server address for connecting via socket. The ID is announced to the socket server during setup, and there can be added data in JSON format if needed.
 
-## General Description
-The merchant generates a QR code that the client scans to obtain the server address to connect via socket, as well as the public key and ivhex for message encryption, and the ID announced to the socket server during setup. You can also add other data in JSON format if needed.
+The client scans the QR code and encrypts its public key, ivhex, and ID announced to the socket network in JSON format using the merchant's public key, then sends it to the merchant through the socket.
 
-The client scans the QR code and encrypts its own public key, ivhex, and ID announced to the socket network in JSON format using the merchant's public key, then sends it to the merchant through the socket.
-
-The server, upon receiving each message, stores the ID and socket related to the presentApplicationID message, and if the title is different, it sends the message to the client or merchant based on the message ID.
-
-
-[![Three Party Communication](https://i.postimg.cc/vT0zGx3R/image.webp)](https://postimg.cc/Zvy3cRGj)
-
-The advantage of this method is that the entire process is fully encrypted from the start, eliminating the possibility of data tampering.
-
-This is a simple sample based on the above description, and you can modify and use it according to your needs.
+Upon receiving each message, the server stores the ID and socket related to the presentApplicationID message and sends the message to the client or merchant based on the message ID. The advantage of this method is that the entire process is fully encrypted from the start, eliminating the possibility of data tampering.
 
 ## Setup Instructions
 
@@ -63,7 +56,7 @@ You will see the assigned domain in the console output.
 ### Setting up the merchant:
 1. Enter the `merchant` folder.
 2. Create a `.env` file based on `.env.sample` and replace the relevant values:
-   - `GENEREATE_MERKLE_ROOT_LOCAL`: Set to 1 to generate local merkle root; otherwise, it is fetched from the API.
+   - `GENEREATE_MERKLE_ROOT_LOCAL`: Set to 1 to generate local Merkle root; otherwise, it is fetched from the API.
    - `ACCEPT_UNCONFIRMED_INPUT_TRANSACTION`: Set to 0 or 1.
    - `WEB_SOCKET_ADDRESS`: The WebSocket address based on the domain obtained when running the server (should be in the format wss://).
    - `APPLICATION_NAME`: The application name that clients can recognize you by.
@@ -88,7 +81,7 @@ npm run start
 Wait for the client to start without errors. Note that at this stage, the client is not connected to any server.
 
 ## Usage Instructions:
-If you have followed the instructions, all parts should be running by now. We will now perform an operation to connect and send transaction information from the client and verify it on the merchant side as SPV.
+If you have followed the instructions, all parts should be running by now. We will now operate to connect and send transaction information from the client and verify it on the merchant side as SPV.
 
 
 [![Workflow](https://i.postimg.cc/4Nwvcc6j/image.webp)](https://postimg.cc/tYZVQYmz)

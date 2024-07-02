@@ -8,37 +8,50 @@ import { EncryptionKeyModel, UserModel } from 'types/user';
 
 @Injectable()
 export class ApiService {
-    constructor(private readonly encryptionService: EncryptionService, private readonly jsonDbService: JsonDbService, private readonly appConfigService: AppConfigService) { }
-    async generateQRCode(): Promise<Buffer> {
-        try {
+  constructor(
+    private readonly encryptionService: EncryptionService,
+    private readonly jsonDbService: JsonDbService,
+    private readonly appConfigService: AppConfigService,
+  ) {}
 
-            const key: EncryptionKeyModel = this.encryptionService.generateEncryptionKey();
-            const serverAddress: string = this.appConfigService.WEB_SOCKET_ADDRESS;
-            const user: UserModel = await this.jsonDbService.create({ id: -1, callId: "", name: this.appConfigService.APPLICATION_NAME, secondPartyPublicKeyHex: '', encryptionKeyModel: { ivHex: key.ivHex, privateKeyHex: key.privateKeyHex, publicKeyHex: key.publicKeyHex }, socketAddress: serverAddress, secondPartyivHex: "" });
-            // const userString = JSON.stringify(user);
+  async generateQRCode(): Promise<Buffer> {
+    try {
+      const key: EncryptionKeyModel =
+        this.encryptionService.generateEncryptionKey();
+      const serverAddress: string = this.appConfigService.webSocketAddress;
 
-            Logger.debug(user.id)
+      const user: UserModel = await this.jsonDbService.create({
+        id: -1,
+        callId: '',
+        name: this.appConfigService.applicationName,
+        secondPartyPublicKeyHex: '',
+        encryptionKeyModel: {
+          ivHex: key.ivHex,
+          privateKeyHex: key.privateKeyHex,
+          publicKeyHex: key.publicKeyHex,
+        },
+        socketAddress: serverAddress,
+        secondPartyivHex: '',
+      });
 
-            const url = `${user.socketAddress}/?socketAddress=${user.socketAddress}&id=${user.id}&name=${user.name}&callId=${this.appConfigService.APPLICATION_WEB_SOCKET_CALL_ID}&ivHex=${user.encryptionKeyModel.ivHex}&publicKeyHex=${user.encryptionKeyModel.publicKeyHex}`
+      Logger.debug(`User ID: ${user.id}`);
 
-            const compressedData = pako.deflate(url, { to: 'string' });
+      const url = `${user.socketAddress}/?socketAddress=${user.socketAddress}&id=${user.id}&name=${user.name}&callId=${this.appConfigService.applicationWebSocketCallId}&ivHex=${user.encryptionKeyModel.ivHex}&publicKeyHex=${user.encryptionKeyModel.publicKeyHex}`;
 
-            // Logger.debug(`url for QR code: ${url}`);
+      const compressedData = pako.deflate(url, { to: 'string' });
+      const compressedBase64 = Buffer.from(compressedData).toString('base64');
 
-            const compressedBase64 = Buffer.from(compressedData).toString('base64');
+      Logger.debug(`Compressed Data for QR code: ${compressedBase64}`);
 
-            Logger.debug(`compressedData for QR code: ${compressedBase64}`);
+      const qrCodeBuffer = await QRCode.toBuffer(compressedBase64, {
+        errorCorrectionLevel: 'L', // High error correction level
+        version: 40, // Example specific version, you can adjust based on needs
+      });
 
-            // Logger.debug(`User string for QR code: ${userString}`);
-            const qrCodeBuffer = await QRCode.toBuffer(compressedBase64, {
-                errorCorrectionLevel: 'L', // High error correction level
-                version: 40 // Example specific version, you can adjust based on needs
-            });
-
-            return qrCodeBuffer;
-        } catch (error) {
-            Logger.debug(`Could not generate QR code: ${error}`)
-            throw new Error('Could not generate QR code');
-        }
+      return qrCodeBuffer;
+    } catch (error) {
+      Logger.debug(`Could not generate QR code: ${error}`);
+      throw new Error('Could not generate QR code');
     }
+  }
 }

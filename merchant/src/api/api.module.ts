@@ -7,6 +7,6 @@ import { ApiService } from './api.service';
 
 @Module({
   controllers: [ApiController],
-  providers: [ApiService, EncryptionService, JsonDbService, AppConfigService]
+  providers: [ApiService, EncryptionService, JsonDbService, AppConfigService],
 })
-export class ApiModule { }
+export class ApiModule {}

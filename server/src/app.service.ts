@@ -1,30 +1,41 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import * as ngrok from '@ngrok/ngrok';
 import * as http from 'http';
 import * as WebSocket from 'ws';
 import { AppConfigService } from './app.config.service';
-import { SocketEventEnum } from './dto/socket_event.dto';
-import { SocketMessagemodel } from './dto/socket_message.dto';
-import { UserStatus } from './dto/user_status.dto';
+import { UserStatusResDto } from './dto/user/status.dto';
+import { SocketMessageModel } from 'type/socket/message';
+import { SocketEventEnum } from 'type/socket/event';
 
 @Injectable()
 export class AppService implements OnModuleInit, OnModuleDestroy {
-
-  constructor(private appConfigService: AppConfigService) { }
   private server: http.Server;
   private wss: WebSocket.Server;
   private ngrokListener: ngrok.Listener;
+  private users = new Map<string, WebSocket>();
 
-  private users = new Map();
+  constructor(private appConfigService: AppConfigService) {}
 
   async onModuleInit() {
     this.setupHttpServer();
     this.setupWebSocketServer();
 
-    this.server.listen(this.appConfigService.APPLICATION_SOCKET_PORT, () => Logger.debug(`Node.js web server at ${this.appConfigService.APPLICATION_SOCKET_PORT} is running...`));
+    this.server.listen(this.appConfigService.applicationSocketPort, () =>
+      Logger.debug(
+        `Node.js web server at ${this.appConfigService.applicationSocketPort} is running...`,
+      ),
+    );
 
     try {
-      this.ngrokListener = await ngrok.connect({ addr: this.appConfigService.APPLICATION_SOCKET_PORT, authtoken: this.appConfigService.NGROK_Token });
+      this.ngrokListener = await ngrok.connect({
+        addr: this.appConfigService.applicationSocketPort,
+        authtoken: this.appConfigService.ngrokToken,
+      });
       Logger.debug(`Ingress established at: ${this.ngrokListener.url()}`);
     } catch (error) {
       Logger.error('Failed to establish ngrok connection:', error);
@@ -39,15 +50,19 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
       this.server.close(() => Logger.debug('HTTP server closed.'));
     }
     if (this.ngrokListener) {
-      this.ngrokListener.close().then(() => Logger.debug('ngrok connection closed.'));
+      this.ngrokListener
+        .close()
+        .then(() => Logger.debug('ngrok connection closed.'));
     }
   }
 
   private setupHttpServer() {
-    this.server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end('Congrats you have created an ngrok web server');
-    });
+    this.server = http.createServer(
+      (req: http.IncomingMessage, res: http.ServerResponse) => {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('Congrats you have created an ngrok web server');
+      },
+    );
 
     this.server.on('error', (error) => {
       Logger.error('HTTP server error:', error);
@@ -80,46 +95,63 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   private handleMessage(ws: WebSocket, message: WebSocket.Data) {
-    // Implement your message handling logic here
     Logger.debug('Received message:', message);
-    const jsonMessage: SocketMessagemodel = JSON.parse(message);
-    // Logger.debug('Received message Parse json:', jsonMessage);
-    if (jsonMessage.event === SocketEventEnum.PresentApplicationId) {
-      const userApplicationId: string = jsonMessage.message.join('');
-      Logger.debug(`set application Id ${userApplicationId}`);
-      this.users.set(userApplicationId, ws);
-    } else
-      if (jsonMessage.event === SocketEventEnum.PresentRemoveApplicationId) {
-        const userApplicationId: string = jsonMessage.message.join('');
-        Logger.debug(`set application Id ${userApplicationId}`);
-        this.users.delete(userApplicationId);
+    try {
+      const jsonMessage: SocketMessageModel = JSON.parse(message.toString());
+      switch (jsonMessage.event) {
+        case SocketEventEnum.PresentApplicationId:
+          this.handlePresentApplicationId(ws, jsonMessage);
+          break;
+        case SocketEventEnum.PresentRemoveApplicationId:
+          this.handlePresentRemoveApplicationId(jsonMessage);
+          break;
+        default:
+          this.forwardMessage(jsonMessage, message);
+          break;
       }
-      else {
-        if (this.users.has(jsonMessage.callId)) {
-          const reciverId: WebSocket = this.users.get(jsonMessage.callId);
-          reciverId.send(message);
-        } else {
-          Logger.debug("user not exist");
-        }
-      }
-
+    } catch (error) {
+      Logger.error('Failed to process message:', error);
+    }
   }
 
-  private removeWebSocketFromMaps(ws: WebSocket) {
-    // Implement your WebSocket cleanup logic here
+  private handlePresentApplicationId(
+    ws: WebSocket,
+    message: SocketMessageModel,
+  ) {
+    const userApplicationId = message.message.join('');
+    Logger.debug(`Setting application ID ${userApplicationId}`);
+    this.users.set(userApplicationId, ws);
+  }
 
-    this.users.forEach((value, key) => {
+  private handlePresentRemoveApplicationId(message: SocketMessageModel) {
+    const userApplicationId = message.message.join('');
+    Logger.debug(`Removing application ID ${userApplicationId}`);
+    this.users.delete(userApplicationId);
+  }
+
+  private forwardMessage(
+    jsonMessage: SocketMessageModel,
+    rawMessage: WebSocket.Data,
+  ) {
+    const receiverId = this.users.get(jsonMessage.callId);
+    if (receiverId) {
+      receiverId.send(rawMessage);
+    } else {
+      Logger.debug('User not exist');
+    }
+  }
+  private removeWebSocketFromMaps(ws: WebSocket) {
+    for (const [key, value] of this.users.entries()) {
       if (value === ws) {
         this.users.delete(key);
-        Logger.debug('Cleaning up WebSocket resources for:');
+        Logger.debug(`Cleaning up WebSocket resources for ${key}`);
       }
-    });
-
+    }
   }
 
-  CheckUserIsOnline(ids: string[]): UserStatus[] {
-    Logger.debug("ids", ids)
-    return ids.map(id => ({
+  checkUserIsOnline(ids: string[]): UserStatusResDto[] {
+    Logger.debug('Checking user statuses for IDs:', ids);
+    return ids.map((id) => ({
       id,
       status: this.users.has(id),
     }));

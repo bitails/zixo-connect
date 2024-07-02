@@ -15,7 +15,14 @@ import { WebSocketService } from './web_socket/web_socket.service';
     }),
     ApiModule,
   ],
-  providers: [AppConfigService, AppService, WebSocketService, JsonDbService, EncryptionService, TransactionService],
+  providers: [
+    AppConfigService,
+    AppService,
+    WebSocketService,
+    JsonDbService,
+    EncryptionService,
+    TransactionService,
+  ],
   exports: [AppConfigService, EncryptionService],
 })
-export class AppModule { }
+export class AppModule {}

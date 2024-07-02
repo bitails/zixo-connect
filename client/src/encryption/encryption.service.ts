@@ -1,96 +1,109 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { EncryptionKeyModel, MerchandModel } from 'src/web_socket/dto/merchand.dto';
-
+import { EncryptionKeyModel, MerchandModel } from 'types/merchant';
 
 @Injectable()
 export class EncryptionService {
+  generateEncryptionKey(): EncryptionKeyModel {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+    });
 
-    generateEncryptionKey(): EncryptionKeyModel {
+    const aliceKeyPrivateHex = privateKey
+      .export({
+        type: 'pkcs1',
+        format: 'pem',
+      })
+      .toString('hex');
 
-        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-            modulusLength: 2048,
-        });
+    const alicePublicPair = publicKey
+      .export({
+        type: 'spki',
+        format: 'pem',
+      })
+      .toString('hex');
 
-        const aliceKeyPrivateHex = privateKey.export({
-            type: 'pkcs1',
-            format: 'pem',
-        }).toString('hex');
+    const publicKeyHex = Buffer.from(alicePublicPair).toString('hex');
+    const privateKeyHex = Buffer.from(aliceKeyPrivateHex).toString('hex');
 
-        const alicePublicPair = publicKey.export({
-            type: 'spki',
-            format: 'pem',
-        }).toString('hex');
+    const iv = crypto.randomBytes(16);
+    const ivHex = iv.toString('hex');
 
-        const publicKeyHex = Buffer.from(alicePublicPair).toString('hex');
-        const privateKeyHex = Buffer.from(aliceKeyPrivateHex).toString('hex');
+    return { privateKeyHex, publicKeyHex, ivHex };
+  }
 
-        const iv = crypto.randomBytes(16);
-        const ivHex = iv.toString('hex');
+  private splitStringIntoChunks(input: string, maxChunkSize: number): string[] {
+    const chunks: string[] = [];
 
-        return { privateKeyHex, publicKeyHex, ivHex }
+    for (let i = 0; i < input.length; i += maxChunkSize) {
+      const chunk = input.substring(i, i + maxChunkSize);
+      chunks.push(chunk);
     }
 
-    private splitStringIntoChunks(input: string, maxChunkSize: number): string[] {
-        const chunks: string[] = [];
+    return chunks;
+  }
 
-        for (let i = 0; i < input.length; i += maxChunkSize) {
-            const chunk = input.substring(i, i + maxChunkSize);
-            chunks.push(chunk);
-        }
-
-        return chunks;
+  encryptMyMessages(message: string, merchant: MerchandModel): string[] {
+    const messages: string[] = this.splitStringIntoChunks(message, 180);
+    if (
+      merchant.secondPartyivHex === '' ||
+      messages.length === 0 ||
+      merchant.secondPartyPublicKeyHex === ''
+    ) {
+      return [''];
     }
 
-    encryptMyMessages(message: string, merchand: MerchandModel): string[] {
-        const messages: string[] = this.splitStringIntoChunks(message, 180);
-        if (merchand.secondPartyivHex === '' || messages.length === 0 || merchand.secondPartyPublicKeyHex === '') {
-            return [''];
-        }
+    Logger.debug('secondPartyivHex', merchant.secondPartyivHex);
 
-        const iv = Buffer.from(merchand.secondPartyivHex);
+    Logger.debug('secondPartyPublicKeyHex', merchant.secondPartyPublicKeyHex);
 
-        const encryptedChunks = messages.map((message) => {
-            const encryptedData = crypto.publicEncrypt(
-                {
-                    key: Buffer.from(merchand.secondPartyPublicKeyHex, 'hex'),
-                    padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                    oaepHash: 'sha256',
-                    oaepLabel: iv,
-                },
-                Buffer.from(message)
-            );
-            return encryptedData.toString('base64');
-        });
+    Logger.debug('message', message);
 
-        //  const combinedString = encryptedChunks.join(',');
+    const iv = Buffer.from(merchant.secondPartyivHex);
 
-        return encryptedChunks;
+    const encryptedChunks = messages.map((message) => {
+      const encryptedData = crypto.publicEncrypt(
+        {
+          key: Buffer.from(merchant.secondPartyPublicKeyHex, 'hex'),
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: 'sha256',
+          oaepLabel: iv,
+        },
+        Buffer.from(message),
+      );
+      return encryptedData.toString('base64');
+    });
+
+    //  const combinedString = encryptedChunks.join(',');
+
+    return encryptedChunks;
+  }
+
+  decryptMyMessages(encryptedMessages: string[], user: MerchandModel): string {
+    if (
+      user.encryptionKeyModel.privateKeyHex === '' ||
+      user.encryptionKeyModel.ivHex === ''
+    ) {
+      Logger.debug('Data store is empty');
+      return '';
     }
 
-    decryptMyMessages(encryptedMessages: string[], user: MerchandModel): string {
-        if (user.encryptionKeyModel.privateKeyHex === '' || user.encryptionKeyModel.ivHex === '') {
-            Logger.debug('Data store is empty');
-            return '';
-        }
+    const iv = Buffer.from(user.encryptionKeyModel.ivHex);
 
-        const iv = Buffer.from(user.encryptionKeyModel.ivHex);
+    const decryptedChunks = encryptedMessages.map((encryptedMessage) => {
+      const decryptedData = crypto.privateDecrypt(
+        {
+          key: Buffer.from(user.encryptionKeyModel.privateKeyHex, 'hex'),
+          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: 'sha256',
+          oaepLabel: iv,
+        },
+        Buffer.from(encryptedMessage, 'base64'),
+      );
 
-        const decryptedChunks = encryptedMessages.map((encryptedMessage) => {
-            const decryptedData = crypto.privateDecrypt(
-                {
-                    key: Buffer.from(user.encryptionKeyModel.privateKeyHex, 'hex'),
-                    padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                    oaepHash: 'sha256',
-                    oaepLabel: iv,
-                },
-                Buffer.from(encryptedMessage, 'base64')
-            );
+      return decryptedData.toString('utf-8');
+    });
 
-            return decryptedData.toString('utf-8');
-        });
-
-        return decryptedChunks.join('');
-    }
-
+    return decryptedChunks.join('');
+  }
 }

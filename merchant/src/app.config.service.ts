@@ -5,14 +5,19 @@ import { ConfigService } from '@nestjs/config';
 export class AppConfigService {
   constructor(private readonly configService: ConfigService) {}
 
-  get generateMerkleRootLocal(): boolean {
-    return this.configService.get<string>('GENERATE_MERKLE_ROOT_LOCAL') === '1';
+  get shouldGenerateMerkleRootLocally(): boolean {
+    return (
+      this.configService.get<string>('FETCH_MERKLE_ROOT_IF_NOT_EXISTS') === '1'
+    );
   }
 
-  get acceptUnconfirmedInputTransaction(): boolean {
+  get acceptUnconfirmedUTXOs(): boolean {
+    return this.configService.get<string>('ACCEPT_UNCONFIRMED_UTXOS') === '1';
+  }
+
+  get requireClientMerklePath(): boolean {
     return (
-      this.configService.get<string>('ACCEPT_UNCONFIRMED_INPUT_TRANSACTION') ===
-      '1'
+      this.configService.get<string>('REQUIRE_MERKLE_PATH_FROM_CLIENT') === '1'
     );
   }
 

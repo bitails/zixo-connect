@@ -10,10 +10,14 @@ import { Interpreter } from 'bsv/lib/script';
 import { createHash } from 'crypto';
 import { AppConfigService } from 'src/app.config.service';
 import { ReqUserDataModel } from 'types/user';
+import { BlockService } from 'src/block/block.service';
 
 @Injectable()
 export class TransactionService {
-  constructor(private readonly appConfigService: AppConfigService) {}
+  constructor(
+    private readonly appConfigService: AppConfigService,
+    private readonly blockService: BlockService,
+  ) {}
 
   parseRawTransaction(rawTx: string): TransactionModel {
     const tx = new Transaction(rawTx);
@@ -85,25 +89,60 @@ export class TransactionService {
       .toString('hex');
   }
 
-  verifyInputsTransaction(reqUserDataModel: ReqUserDataModel): boolean {
+  checkDataHasBranchesAndBlockheight(
+    reqUserDataModel: ReqUserDataModel,
+  ): boolean {
+    for (const input of reqUserDataModel.inputs) {
+      if (!input.branch || input.branch.length === 0) {
+        return false;
+      }
+      if (!input.blockheight) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  async verifyInputsTransaction(
+    reqUserDataModel: ReqUserDataModel,
+  ): Promise<boolean> {
     try {
       const current: TransactionModel = this.parseRawTransaction(
         reqUserDataModel.currentTx,
       );
 
-      const mergeOutputs: Vout[] = reqUserDataModel.inputs.flatMap(
-        (input) => this.parseRawTransaction(input.rawTx).vout,
-      );
-
-      return current.vin.every((input: Vin) => {
-        const index = mergeOutputs.findIndex((output) => {
-          if (this.appConfigService.acceptUnconfirmedInputTransaction) {
-            return output.spent?.txid === input.txid && output.n === input.vout;
-          }
+      for (var index in reqUserDataModel.inputs) {
+        const input = reqUserDataModel.inputs[index];
+        const status: boolean =
+          await this.blockService.validateSourceOfTransaction(
+            input.rawTx,
+            input.branch,
+            input.blockheight,
+          );
+        if (status == false) {
           return false;
-        });
-        return index !== -1;
-      });
+        }
+      }
+
+      return true;
+
+      // const mergeOutputs: Vout[] = reqUserDataModel.inputs.flatMap(
+      //   (input) => this.parseRawTransaction(input.rawTx).vout,
+      // );
+
+      // return current.vin.every((input: Vin) => {
+      //   const index = mergeOutputs.findIndex((output) => {
+      //     if (this.appConfigService.acceptUnconfirmedUTXOs) {
+      //       this.blockService.validateSourceOfTransaction(
+      //         reqUserDataModel.currentTx,
+      //         reqUserDataModel.
+      //       );
+      //       return output.spent?.txid === input.txid && output.n === input.vout;
+      //     }
+      //     return false;
+      //   });
+      //   return index !== -1;
+      // });
     } catch (e) {
       Logger.error('Error in verifyInputsTransaction:', e);
       return false;
@@ -210,7 +249,9 @@ export class TransactionService {
     }
   }
 
-  verifyTransaction(reqUserDataModel: ReqUserDataModel): boolean {
-    return this.verifyInputsTransaction(reqUserDataModel);
+  async verifyTransaction(
+    reqUserDataModel: ReqUserDataModel,
+  ): Promise<boolean> {
+    return await this.verifyInputsTransaction(reqUserDataModel);
   }
 }

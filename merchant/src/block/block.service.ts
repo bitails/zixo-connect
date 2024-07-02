@@ -6,6 +6,7 @@ import { AppConfigService } from 'src/app.config.service';
 import { TransactionService } from 'src/transaction/transaction.service';
 import { TransactionModel } from 'types/transaction';
 import { BlockModel } from '../../types/block';
+import { ReqUserDataModel } from 'types/user';
 
 @Injectable()
 export class BlockService {
@@ -78,7 +79,7 @@ export class BlockService {
   }
 
   async getMerkleRoot(blockHeight: number): Promise<string> {
-    if (this.appConfigService.generateMerkleRootLocal) {
+    if (this.appConfigService.shouldGenerateMerkleRootLocally) {
       const block = await this.getBlockByHeight(blockHeight);
       return block.merkleroot;
     } else {
@@ -110,16 +111,100 @@ export class BlockService {
     return currentHash.reverse().toString('hex'); // Reverse back to big-endian for final result
   }
 
+  async getMerklePath(txId: string): Promise<BranchModel[]> {
+    const url = `${this.appConfigService.ApiBaseAddress}tx/${txId}/proof`;
+    const options = {
+      uri: url,
+      headers: {
+        accept: 'application/json',
+      },
+      json: true,
+    };
+
+    try {
+      const responseBody: any = await request.get(options);
+      if (responseBody && responseBody.branches) {
+        return responseBody.branches;
+      } else {
+        throw new Error('Invalid response structure');
+      }
+    } catch (error) {
+      throw new Error(`Error fetching proof: ${error.message}`);
+    }
+  }
+
+  async getBlockHeight(txId: string): Promise<number> {
+    const url = `${this.appConfigService.ApiBaseAddress}tx/${txId}`;
+    const options = {
+      uri: url,
+      headers: {
+        accept: 'application/json',
+      },
+      json: true,
+    };
+
+    try {
+      const responseBody: any = await request.get(options);
+      if (responseBody && responseBody.blockheight) {
+        return responseBody.blockheight;
+      } else {
+        throw new Error('Invalid response structure');
+      }
+    } catch (error) {
+      throw new Error(`Error fetching proof: ${error.message}`);
+    }
+  }
+
+  async addMerklePathAndBlockHeightToData(
+    reqUserDataModel: ReqUserDataModel,
+  ): Promise<ReqUserDataModel> {
+    for (const input of reqUserDataModel.inputs) {
+      const transactionModel: TransactionModel =
+        this.transactionService.parseRawTransaction(input.rawTx);
+
+      const updatedBranch: BranchModel[] = await this.getMerklePath(
+        transactionModel.txid,
+      );
+
+      const blockHeight: number = await this.getBlockHeight(
+        transactionModel.txid,
+      );
+
+      if (!input.branch) {
+        input.branch = [];
+      }
+      input.blockheight = blockHeight;
+      input.branch.push(...updatedBranch);
+    }
+    return reqUserDataModel;
+  }
+
   async validateSourceOfTransaction(
     rawTx: string,
     merklePath: BranchModel[],
+    blockheight: number,
   ): Promise<boolean> {
+    if (this.appConfigService.acceptUnconfirmedUTXOs) {
+      return true;
+    }
+
     const transaction = this.transactionService.parseRawTransaction(rawTx);
-    const validMerkleRoot = await this.getMerkleRoot(transaction.blockheight);
+
+    if (this.appConfigService.shouldGenerateMerkleRootLocally) {
+      const computedMerkleRoot = this.computeMerkleRoot(
+        transaction.txid,
+        merklePath,
+      );
+      if (computedMerkleRoot) {
+        return true;
+      }
+    }
+    const validMerkleRoot = await this.getMerkleRoot(blockheight);
     const computedMerkleRoot = this.computeMerkleRoot(
       transaction.txid,
       merklePath,
     );
+
     return computedMerkleRoot === validMerkleRoot;
   }
 }

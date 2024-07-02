@@ -1,17 +1,15 @@
-
-
 export class ReqUserDataModel {
-    currentTx: string;
-    inputs: Input[];
+  currentTx: string;
+  inputs: Input[];
 }
 
 class Input {
-    rawTx: string;
-    branch: BranchModel[]
+  rawTx: string;
+  blockheight: number;
+  branch: BranchModel[];
 }
 
 export class BranchModel {
-    pos: 'L' | 'R';
-    hash: string;
+  pos: 'L' | 'R';
+  hash: string;
 }
-

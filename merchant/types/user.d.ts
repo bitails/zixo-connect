@@ -23,5 +23,6 @@ export class ReqUserDataModel {
 
 class Input {
   rawTx: string;
+  blockheight: number;
   branch: BranchModel[];
 }

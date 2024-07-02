@@ -5,6 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { AppConfigService } from 'src/app.config.service';
+import { BlockService } from 'src/block/block.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { JsonDbService } from 'src/json-db/json-db.service';
 import { TransactionService } from 'src/transaction/transaction.service';
@@ -25,6 +26,7 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
     private readonly jsonDbService: JsonDbService,
     private readonly encryptionService: EncryptionService,
     private readonly transactionService: TransactionService,
+    private readonly blockService: BlockService,
   ) {}
 
   onModuleInit() {
@@ -144,18 +146,36 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
       user,
     );
     const parsedDec: ReqUserDataModel = JSON.parse(decryptedMessage);
-    const reqUserDataModel: ReqUserDataModel = {
+    var reqUserDataModel: ReqUserDataModel = {
       currentTx: parsedDec.currentTx,
       inputs: parsedDec.inputs.map((input) => ({
         rawTx: input.rawTx,
-        branch: input.branch.map((branch) => ({
+        blockheight: input.blockheight || 0,
+        branch: (input.branch || []).map((branch) => ({
           pos: branch.pos,
           hash: branch.hash,
         })),
       })),
     };
 
+    const dataHasMerklePath =
+      this.transactionService.checkDataHasBranchesAndBlockheight(
+        reqUserDataModel,
+      );
+    if (!dataHasMerklePath) {
+      if (this.appConfigService.requireClientMerklePath) {
+        Logger.debug('Transaction is inValid');
+        this.sendMessageToClient(user, 'transaction is invalid');
+      } else {
+        reqUserDataModel =
+          await this.blockService.addMerklePathAndBlockHeightToData(
+            reqUserDataModel,
+          );
+      }
+    }
+
     const verifyTxIds = this.transactionService.verifyTxIds(reqUserDataModel);
+
     Logger.debug(`verifyTxIds: ${verifyTxIds}`);
     const verifyInputScripts =
       this.transactionService.verifyInputScripts(reqUserDataModel);
@@ -174,22 +194,25 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
       verifyTransaction
     ) {
       Logger.debug('Transaction is valid');
-
-      const encryptedMessage = this.encryptionService.encryptMyMessages(
-        'transaction is valid',
-        user,
-      );
-      Logger.debug('Call ID:', user.callId);
-
-      const responseMessage: SocketMessagemodel = {
-        id: user.id,
-        event: SocketEventEnum.PresentData,
-        callId: user.callId,
-        message: encryptedMessage,
-      };
-
-      this.sendMessage(JSON.stringify(responseMessage));
+      this.sendMessageToClient(user, 'transaction is valid');
     }
+  }
+
+  sendMessageToClient(user: UserModel, message: string): void {
+    const encryptedMessage = this.encryptionService.encryptMyMessages(
+      message,
+      user,
+    );
+    Logger.debug('Call ID:', user.callId);
+
+    const responseMessage: SocketMessagemodel = {
+      id: user.id,
+      event: SocketEventEnum.PresentData,
+      callId: user.callId,
+      message: encryptedMessage,
+    };
+
+    this.sendMessage(JSON.stringify(responseMessage));
   }
 
   private isValidSocketMessage(message: any): message is SocketMessagemodel {

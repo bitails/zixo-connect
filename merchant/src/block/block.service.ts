@@ -1,6 +1,6 @@
 import * as bsv from 'bsv';
 import { BlockHeaderModel, BranchModel, ProofModel } from '../../types/merkle';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import request from 'request';
 import { AppConfigService } from 'src/app.config.service';
 import { TransactionService } from 'src/transaction/transaction.service';
@@ -12,6 +12,7 @@ import { ReqUserDataModel } from 'types/user';
 export class BlockService {
   constructor(
     private readonly appConfigService: AppConfigService,
+    @Inject(forwardRef(() => TransactionService))
     private readonly transactionService: TransactionService,
   ) {}
 

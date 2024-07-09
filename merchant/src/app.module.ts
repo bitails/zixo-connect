@@ -8,6 +8,7 @@ import { EncryptionService } from './encryption/encryption.service';
 import { JsonDbService } from './json-db/json-db.service';
 import { TransactionService } from './transaction/transaction.service';
 import { WebSocketService } from './web_socket/web_socket.service';
+import { BlockService } from './block/block.service';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -21,6 +22,7 @@ import { WebSocketService } from './web_socket/web_socket.service';
     WebSocketService,
     JsonDbService,
     EncryptionService,
+    BlockService,
     TransactionService,
   ],
   exports: [AppConfigService, EncryptionService],

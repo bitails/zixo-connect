@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { Opcode, Script, Transaction } from 'bsv';
 import {
   ScriptSig,
@@ -15,7 +15,7 @@ import { BlockService } from 'src/block/block.service';
 @Injectable()
 export class TransactionService {
   constructor(
-    private readonly appConfigService: AppConfigService,
+    @Inject(forwardRef(() => BlockService))
     private readonly blockService: BlockService,
   ) {}
 

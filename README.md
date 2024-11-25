@@ -14,7 +14,7 @@ This solution enables seamless transactions between merchants and clients using 
 
 1. **Merchant Setup**: The merchant sets up the merchant service on their website or application, displaying a QR code for clients to scan.
 
-2. **Client Interaction**: The client scans the QR code displayed by the merchant. This QR code contains the necessary information for connecting to the merchant service.
+2. **Client Interaction**: The client scans the QR code displayed by the merchant. This QR code contains the necessary information to connect to the merchant service.
 
 3. **Transaction Creation**: Upon scanning the QR code, the client connects with the merchant service and creates a transaction. The transaction follows SPV principles, ensuring it is lightweight and efficient.
 
@@ -124,7 +124,7 @@ Name
 secondPartyPublicKeyHex
 ```
 
-These are the data provided by the merchant to the client via the QR code.
+These are the data the merchant provides to the client via the QR code.
 
 At this stage, the client encrypts its publicKeyHex, ivHex, and callId using the public key and ivHex provided by the merchant and sends them to the merchant to establish secure communication.
 
@@ -158,4 +158,10 @@ BranchModel {
 }
 ```
 
-These data are encrypted using the merchant's public keys as described earlier and sent to the merchant. The merchant decrypts these data, verifies them, performs the SPV operation, and if successful, sends a success message back to the client using the same encryption method.
+These data are encrypted using the merchant's public keys described earlier and sent to the merchant. The merchant decrypts these data, verifies them, performs the SPV operation, and if successful, sends a success message back to the client using the same encryption method.
+## Donation
+Zixo-Connect is a side project of the Bitails team with no intention of direct financial gain. If you find this project useful and worth working on, ping out the following addresses specified for this project.
+
+BSV: 1Fzt3S751fAaHbVNHVyru83kyzoCUtDFCQ
+
+BTC: bc1q9kdcl5ffvl2jsxn4xdfr7655fmschckz6wsyza
